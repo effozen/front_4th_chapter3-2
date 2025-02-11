@@ -100,4 +100,21 @@ describe('useEventForm 테스트', () => {
   });
 });
 
-describe('', () => {});
+describe('반복된 일정을 생성할 수 있다.', () => {
+  const { result } = renderHook(() => useEventForm(Event));
+
+  let dates;
+
+  act(() => {
+    result.current.setDate('2025-01-31');
+    result.current.setRepeatType('mothly');
+    result.current.setRepeatEndDate('2025-11-01');
+  });
+
+  act(() => {
+    datas = result.current.calculateRepeatDays();
+  });
+
+  // 날짜 추가하기
+  expect(dates).toEqual([]);
+});
