@@ -1,120 +1,130 @@
-import { renderHook, act } from '@testing-library/react';
-import { describe, it } from 'vitest';
+import { Event } from '../../types';
+import { expandRepeatingEvents } from '../../utils/eventUtils';
 
-import { useEventForm } from '../../hooks/useEventForm.ts';
-import { RepeatType } from '../../types.ts';
-
-describe('useEventForm 테스트', () => {
-  const Event = {
+describe('expandRepeatingEvents', () => {
+  const baseEvent: Event = {
     id: '1',
-    title: '테스트 이벤트',
-    date: '2025-02-28',
-    startTime: '12:00',
-    endTime: '13:00',
-    description: '테스트용 이벤트 점심입니다.',
-    location: '서울',
-    category: '일정',
+    title: '반복 일정',
+    date: '2024-01-01', // 시작 날짜
+    startTime: '10:00',
+    endTime: '11:00',
+    description: '',
+    location: '',
+    category: '',
     repeat: {
-      type: 'weekly' as RepeatType,
-      interval: 1,
-      endDate: '2025-11-01',
+      type: 'none',
+      interval: 0,
     },
     notificationTime: 10,
   };
 
-  it('일정 생성 또는 수정 시 반복 유형을 선택할 수 있다.', () => {
-    const { result } = renderHook(() => useEventForm(Event));
-
-    act(() => {
-      result.current.setRepeatType('daily');
-    });
-
-    expect(result.current.repeatType).toBe('daily');
+  it('반복 설정이 없는 일정은 그대로 반환한다', () => {
+    const events = [baseEvent];
+    const result = expandRepeatingEvents(events, new Date('2024-01-01'), new Date('2024-12-31'));
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe('2024-01-01');
   });
 
-  it('일정 생성 또는 수정 시, 크기 제한 없이 반복 간격을 설정할 수 있다.', () => {
-    const { result } = renderHook(() => useEventForm(Event));
+  it('매일 반복 일정이 지정된 간격만큼 확장된다', () => {
+    const dailyEvent = {
+      ...baseEvent,
+      repeat: { type: 'daily', interval: 2, endDate: '2024-01-10' },
+    };
 
-    act(() => {
-      result.current.setRepeatType('daily');
-    });
+    const result = expandRepeatingEvents(
+      [dailyEvent],
+      new Date('2024-01-01'),
+      new Date('2024-01-10')
+    );
 
-    act(() => {
-      result.current.setRepeatInterval(30000);
-    });
-
-    expect(result.current.repeatInterval).toBe(30000);
+    expect(result).toHaveLength(5); // 1, 3, 5, 7, 9일 반복
+    expect(result.map((e) => e.date)).toEqual([
+      '2024-01-01',
+      '2024-01-03',
+      '2024-01-05',
+      '2024-01-07',
+      '2024-01-09',
+    ]);
   });
 
-  it('일정 생성 또는 수정 시, 0이하의 값을 선택하면 자동으로 1로 변환된다.', () => {
-    const { result } = renderHook(() => useEventForm(Event));
+  it('매주 반복 일정이 지정된 간격만큼 확장된다', () => {
+    const weeklyEvent = {
+      ...baseEvent,
+      repeat: { type: 'weekly', interval: 1, endDate: '2024-02-01' },
+    };
 
-    act(() => {
-      result.current.setRepeatInterval(0);
-    });
+    const result = expandRepeatingEvents(
+      [weeklyEvent],
+      new Date('2024-01-01'),
+      new Date('2024-02-01')
+    );
 
-    expect(result.current.repeatInterval).toBe(1);
+    expect(result).toHaveLength(5); // 1월 1일, 8일, 15일, 22일, 29일
+    expect(result.map((e) => e.date)).toEqual([
+      '2024-01-01',
+      '2024-01-08',
+      '2024-01-15',
+      '2024-01-22',
+      '2024-01-29',
+    ]);
   });
 
-  it('일정 생성 또는 수정 시, 반복 유형이 "none"일 때 반복 간격을 설정할 수 없다.', () => {
-    const { result } = renderHook(() => useEventForm(Event));
+  it('매월 반복 일정에서 31일이 없는 달은 마지막 날짜로 조정된다', () => {
+    const monthlyEvent = {
+      ...baseEvent,
+      date: '2024-01-31',
+      repeat: { type: 'monthly', interval: 1, endDate: '2024-06-30' },
+    };
 
-    act(() => {
-      result.current.setRepeatType('none');
-    });
+    const result = expandRepeatingEvents(
+      [monthlyEvent],
+      new Date('2024-01-01'),
+      new Date('2024-06-30')
+    );
 
-    act(() => {
-      result.current.setRepeatInterval(5);
-    });
-
-    expect(result.current.repeatInterval).toBe(1);
+    expect(result.map((e) => e.date)).toEqual([
+      '2024-01-31',
+      '2024-02-29', // 윤년이므로 29일 유지
+      '2024-03-31',
+      '2024-04-30', // 4월은 30일까지
+      '2024-05-31',
+      '2024-06-30',
+    ]);
   });
 
-  // TODO: 반복 이후에 데이터를 보내야하는데 어떻게 보낼지 설정하고, 테스트코드를 재작성할것
-  it('일정 생성 또는 수정 시, 매월 반복을 선택했을 경우 윤년 29일 또는 31일의 경우 자동으로 가까운 일을 선택한다.', () => {
-    const { result } = renderHook(() => useEventForm(Event));
+  it('매년 반복 일정이 지정된 간격만큼 확장된다', () => {
+    const yearlyEvent = {
+      ...baseEvent,
+      repeat: { type: 'yearly', interval: 1, endDate: '2027-01-01' },
+    };
 
-    act(() => {
-      result.current.setRepeatType('monthly');
-    });
+    const result = expandRepeatingEvents(
+      [yearlyEvent],
+      new Date('2024-01-01'),
+      new Date('2027-01-01')
+    );
 
-    act(() => {
-      result.current.setDate('2024-02-29');
-    });
-
-    expect(result.current.date).toBe('2024-02-28');
-
-    act(() => {
-      result.current.setDate('2024-03-31');
-    });
-
-    expect(result.current.date).toBe('2024-03-30');
+    expect(result.map((e) => e.date)).toEqual([
+      '2024-01-01',
+      '2025-01-01',
+      '2026-01-01',
+      '2027-01-01',
+    ]);
   });
 
-  it('캘린더에서 반복 일정을 확인할 수 있다.', () => {
-    const { result } = renderHook(() => useEventForm(Event));
+  it('2월 29일이 윤년이 아닌 해에서는 2월 28일로 조정된다', () => {
+    const leapYearEvent = {
+      ...baseEvent,
+      date: '2024-02-29',
+      repeat: { type: 'yearly', interval: 1, endDate: '2027-02-29' },
+    };
 
-    act(() => {
-      result.current.setRepeatType('weekly');
-    });
+    const result = expandRepeatingEvents(
+      [leapYearEvent],
+      new Date('2024-01-01'),
+      new Date('2027-02-28')
+    );
+
+    expect(result.map((e) => e.date)).toEqual(['2024-02-29', '2025-02-28', '2026-02-28']);
   });
-});
-
-describe('반복된 일정을 생성할 수 있다.', () => {
-  const { result } = renderHook(() => useEventForm(Event));
-
-  let dates;
-
-  act(() => {
-    result.current.setDate('2025-01-31');
-    result.current.setRepeatType('mothly');
-    result.current.setRepeatEndDate('2025-11-01');
-  });
-
-  act(() => {
-    datas = result.current.calculateRepeatDays();
-  });
-
-  // 날짜 추가하기
-  expect(dates).toEqual([]);
 });
