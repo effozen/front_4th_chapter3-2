@@ -113,4 +113,45 @@ describe('repeatEventUtils >', () => {
       ]);
     });
   });
+
+  describe('매년 반복되는 일정 테스트(yearly)', () => {
+    it('매년 반복되는 일정에 대해서 연도를 1씩 증가시켜서 반환한다.', () => {
+      baseEvent.repeat = { type: 'yearly', interval: 1, endDate: '2030-01-01' };
+      expect(generateYearlyDates(baseEvent)).toEqual([
+        '2026-01-01',
+        '2027-01-01',
+        '2028-01-01',
+        '2029-01-01',
+        '2030-01-01',
+      ]);
+    });
+
+    it('윤년 2월 29일 → 윤년 아닌 해인 경우 2월 28일로 보정한다.', () => {
+      baseEvent.date = '2024-02-29';
+      baseEvent.repeat = { type: 'yearly', interval: 1, endDate: '2032-02-29' };
+
+      expect(generateYearlyDates(baseEvent)).toEqual([
+        '2025-02-28',
+        '2026-02-28',
+        '2027-02-28',
+        '2028-02-29', // 윤년
+        '2029-02-28',
+        '2030-02-28',
+        '2031-02-28',
+        '2032-02-29', // 윤년
+      ]);
+    });
+
+    it('2년 간격의 2월 29일 → 윤년 아닌 해를 2월 28일로 보정한다.', () => {
+      baseEvent.date = '2024-02-29';
+      baseEvent.repeat = { type: 'yearly', interval: 2, endDate: '2032-02-29' };
+
+      expect(generateYearlyDates(baseEvent)).toEqual([
+        '2026-02-28',
+        '2028-02-29', // 윤년
+        '2030-02-28',
+        '2032-02-29', // 윤년
+      ]);
+    });
+  });
 });
