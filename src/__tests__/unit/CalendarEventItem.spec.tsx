@@ -1,5 +1,6 @@
 import { ChakraProvider } from '@chakra-ui/react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import React from 'react';
 import { vi } from 'vitest';
 
 import { CalendarEventItem } from '../../components/CalendarEventItem';
@@ -23,56 +24,102 @@ describe('CalendarEventItem', () => {
     notificationTime: 10,
   };
 
-  const renderWithChakra = (ui: React.ReactElement) => {
-    return render(<ChakraProvider>{ui}</ChakraProvider>);
-  };
+  const renderWithChakra = (ui: React.ReactElement) =>
+    render(<ChakraProvider>{ui}</ChakraProvider>);
 
-  test('반복 일정일 때 아이콘이 표시되는지 확인', () => {
-    renderWithChakra(<CalendarEventItem event={mockEvent} isNotified={false} />);
+  it('반복 일정이면 repeat-icon이 표시된다', () => {
+    // 필수 props 넘겨주기
+    const onSingleEdit = vi.fn();
+    const onSingleDelete = vi.fn();
 
+    renderWithChakra(
+      <CalendarEventItem
+        event={mockEvent}
+        isNotified={false}
+        onSingleEdit={onSingleEdit}
+        onSingleDelete={onSingleDelete}
+      />
+    );
     expect(screen.getByText(mockEvent.title)).toBeInTheDocument();
     expect(screen.getByTestId('repeat-icon')).toBeInTheDocument();
   });
 
-  test('알림이 있을 때 Bell 아이콘이 표시되는지 확인', () => {
-    renderWithChakra(<CalendarEventItem event={mockEvent} isNotified={true} />);
+  it('알림이 있을 때 bell-icon이 표시된다', () => {
+    const onSingleEdit = vi.fn();
+    const onSingleDelete = vi.fn();
 
+    renderWithChakra(
+      <CalendarEventItem
+        event={mockEvent}
+        isNotified={true}
+        onSingleEdit={onSingleEdit}
+        onSingleDelete={onSingleDelete}
+      />
+    );
     expect(screen.getByTestId('bell-icon')).toBeInTheDocument();
   });
 
-  test('반복 일정이 아닐 때 아이콘이 없는지 확인', () => {
-    const nonRepeatingEvent = { ...mockEvent, repeat: { type: 'none', interval: 0 } };
-    renderWithChakra(<CalendarEventItem event={nonRepeatingEvent} isNotified={false} />);
+  it('repeat.type=none인 경우 repeat-icon이 표시되지 않는다', () => {
+    const onSingleEdit = vi.fn();
+    const onSingleDelete = vi.fn();
+    const nonRepeatingEvent = {
+      ...mockEvent,
+      repeat: { type: 'none', interval: 0 },
+    };
 
+    renderWithChakra(
+      <CalendarEventItem
+        event={nonRepeatingEvent}
+        isNotified={false}
+        onSingleEdit={onSingleEdit}
+        onSingleDelete={onSingleDelete}
+      />
+    );
     expect(screen.queryByTestId('repeat-icon')).not.toBeInTheDocument();
   });
 
-  test('일정 제목이 정상적으로 렌더링되는지 확인', () => {
-    renderWithChakra(<CalendarEventItem event={mockEvent} isNotified={false} />);
-    expect(screen.getByText(mockEvent.title)).toBeInTheDocument();
+  it('단일 수정 클릭 시 onSingleEdit 호출 & repeat: none으로 변경', () => {
+    const onSingleEdit = vi.fn();
+    const onSingleDelete = vi.fn();
+
+    renderWithChakra(
+      <CalendarEventItem
+        event={mockEvent}
+        isNotified={false}
+        onSingleEdit={onSingleEdit}
+        onSingleDelete={onSingleDelete}
+      />
+    );
+
+    const editButton = screen.getByRole('button', { name: '수정' });
+    fireEvent.click(editButton);
+
+    // onSingleEdit가 호출됐는지 확인
+    expect(onSingleEdit).toHaveBeenCalledTimes(1);
+
+    // 인자로 넘긴 updatedEvent는 repeat.type='none'이어야 함
+    const updatedEvent = onSingleEdit.mock.calls[0][0];
+    expect(updatedEvent.repeat.type).toBe('none');
   });
 
-  /** 🆕 추가된 테스트 */
-  test('🔄 반복 일정 단일 수정 시 repeat이 none으로 변경된다', () => {
-    const modifiedEvent = { ...mockEvent, repeat: { type: 'none', interval: 0 } };
+  it('단일 삭제 클릭 시 onSingleDelete 호출', () => {
+    const onSingleEdit = vi.fn();
+    const onSingleDelete = vi.fn();
 
-    renderWithChakra(<CalendarEventItem event={modifiedEvent} isNotified={false} />);
+    renderWithChakra(
+      <CalendarEventItem
+        event={mockEvent}
+        isNotified={false}
+        onSingleEdit={onSingleEdit}
+        onSingleDelete={onSingleDelete}
+      />
+    );
 
-    // 반복 일정 아이콘이 없어야 함
-    expect(screen.queryByTestId('repeat-icon')).not.toBeInTheDocument();
-  });
-
-  test('🗑️ 반복 일정 단일 삭제 시 해당 일정만 삭제된다', () => {
-    const mockDeleteEvent = vi.fn();
-
-    renderWithChakra(<CalendarEventItem event={mockEvent} isNotified={false} />);
-
-    // 삭제 버튼 클릭 (삭제 이벤트 트리거)
-    const deleteButton = screen.getByRole('button', { name: /삭제/i });
+    const deleteButton = screen.getByRole('button', { name: '삭제' });
     fireEvent.click(deleteButton);
 
-    // 삭제 함수가 한 번 호출되었는지 확인
-    expect(mockDeleteEvent).toHaveBeenCalledTimes(1);
-    expect(mockDeleteEvent).toHaveBeenCalledWith(mockEvent.id);
+    // onSingleDelete가 호출됐는지 확인
+    expect(onSingleDelete).toHaveBeenCalledTimes(1);
+    expect(onSingleDelete).toHaveBeenCalledWith(mockEvent.id);
   });
 });
