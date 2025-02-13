@@ -44,7 +44,7 @@ describe('repeatEventUtils >', () => {
     });
   });
 
-  describe('매일 반복되는 일정 테스트', () => {
+  describe('매일 반복되는 일정 테스트(Daily)', () => {
     it('매일 반복을 할 경우에 대해서 정해진 기간까지 반복 일자를 출력한다.', () => {
       baseEvent.repeat = { type: 'daily', interval: 1, endDate: '2025-01-05' };
       expect(generateDailyDates(baseEvent)).toEqual([
@@ -63,6 +63,23 @@ describe('repeatEventUtils >', () => {
         '2025-01-07',
         '2025-01-09',
       ]);
+    });
+  });
+
+  describe('매주 반복되는 일정 테스트(weekly)', () => {
+    it('매주 반복하는 경우, 끝나는 날까지 7일 단위로 증가시킨 일정들을 반환한다.', () => {
+      baseEvent.repeat = { type: 'weekly', interval: 1, endDate: '2025-02-01' };
+      expect(generateWeeklyDates(baseEvent)).toEqual([
+        '2025-01-08',
+        '2025-01-15',
+        '2025-01-22',
+        '2025-01-29',
+      ]);
+    });
+
+    it('2주 간격으로 반복하는 경우, 끝나는 날까지 14일 단위로 증가시킨 일정들을 반환한다.', () => {
+      baseEvent.repeat = { type: 'weekly', interval: 2, endDate: '2025-02-01' };
+      expect(generateWeeklyDates(baseEvent)).toEqual(['2025-01-15', '2025-01-29']);
     });
   });
 });
