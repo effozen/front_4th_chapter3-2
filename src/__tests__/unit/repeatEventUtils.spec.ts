@@ -43,4 +43,26 @@ describe('repeatEventUtils >', () => {
       expect(shouldExpandEvent(baseEvent)).toBe(false);
     });
   });
+
+  describe('매일 반복되는 일정 테스트', () => {
+    it('매일 반복을 할 경우에 대해서 정해진 기간까지 반복 일자를 출력한다.', () => {
+      baseEvent.repeat = { type: 'daily', interval: 1, endDate: '2025-01-05' };
+      expect(generateDailyDates(baseEvent)).toEqual([
+        '2025-01-02',
+        '2025-01-03',
+        '2025-01-04',
+        '2025-01-05',
+      ]);
+    });
+
+    it('2일 간격으로 매일 반복할 경우 하루 건너 하루로 출력될 수 있도록 한다.', () => {
+      baseEvent.repeat = { type: 'daily', interval: 2, endDate: '2025-01-10' };
+      expect(generateDailyDates(baseEvent)).toEqual([
+        '2025-01-03',
+        '2025-01-05',
+        '2025-01-07',
+        '2025-01-09',
+      ]);
+    });
+  });
 });
