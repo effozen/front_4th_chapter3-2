@@ -137,3 +137,10 @@ export const generateYearlyDates = (event: Event): string[] => {
     return new Date(temp.getFullYear(), temp.getMonth(), finalDay);
   });
 };
+
+/**
+ * 해당 일정이 반복 일정인지 확인하는 함수
+ */
+export const isRepeatingEvent = (event: Event): boolean => {
+  return event.repeat.type !== 'none';
+};
