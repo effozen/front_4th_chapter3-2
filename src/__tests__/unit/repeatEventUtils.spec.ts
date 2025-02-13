@@ -154,4 +154,15 @@ describe('repeatEventUtils >', () => {
       ]);
     });
   });
+
+  describe('generateRepeatingDates', () => {
+    it('반복 설정이 없으면 빈 배열을 반환한다.', () => {
+      expect(generateRepeatingDates(baseEvent)).toEqual([]);
+    });
+
+    it('타입에 따라 올바른 함수가 동작한다.', () => {
+      baseEvent.repeat = { type: 'daily', interval: 1, endDate: '2025-01-03' };
+      expect(generateRepeatingDates(baseEvent)).toEqual(['2025-01-02', '2025-01-03']);
+    });
+  });
 });
