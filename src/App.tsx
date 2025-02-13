@@ -40,6 +40,7 @@ import {
 } from '@chakra-ui/react';
 import { useRef, useState } from 'react';
 
+import { CalendarEventItem } from './components/CalendarEventItem';
 import { useCalendarView } from './hooks/useCalendarView.ts';
 import { useEventForm } from './hooks/useEventForm.ts';
 import { useEventOperations } from './hooks/useEventOperations.ts';
@@ -187,27 +188,13 @@ function App() {
                   <Text fontWeight="bold">{date.getDate()}</Text>
                   {filteredEvents
                     .filter((event) => new Date(event.date).toDateString() === date.toDateString())
-                    .map((event) => {
-                      const isNotified = notifiedEvents.includes(event.id);
-                      return (
-                        <Box
-                          key={event.id}
-                          p={1}
-                          my={1}
-                          bg={isNotified ? 'red.100' : 'gray.100'}
-                          borderRadius="md"
-                          fontWeight={isNotified ? 'bold' : 'normal'}
-                          color={isNotified ? 'red.500' : 'inherit'}
-                        >
-                          <HStack spacing={1}>
-                            {isNotified && <BellIcon />}
-                            <Text fontSize="sm" noOfLines={1}>
-                              {event.title}
-                            </Text>
-                          </HStack>
-                        </Box>
-                      );
-                    })}
+                    .map((event) => (
+                      <CalendarEventItem
+                        key={event.id}
+                        event={event}
+                        isNotified={notifiedEvents.includes(event.id)}
+                      />
+                    ))}
                 </Td>
               ))}
             </Tr>
@@ -256,27 +243,13 @@ function App() {
                               {holiday}
                             </Text>
                           )}
-                          {getEventsForDay(filteredEvents, day).map((event) => {
-                            const isNotified = notifiedEvents.includes(event.id);
-                            return (
-                              <Box
-                                key={event.id}
-                                p={1}
-                                my={1}
-                                bg={isNotified ? 'red.100' : 'gray.100'}
-                                borderRadius="md"
-                                fontWeight={isNotified ? 'bold' : 'normal'}
-                                color={isNotified ? 'red.500' : 'inherit'}
-                              >
-                                <HStack spacing={1}>
-                                  {isNotified && <BellIcon />}
-                                  <Text fontSize="sm" noOfLines={1}>
-                                    {event.title}
-                                  </Text>
-                                </HStack>
-                              </Box>
-                            );
-                          })}
+                          {getEventsForDay(filteredEvents, day).map((event) => (
+                            <CalendarEventItem
+                              key={event.id}
+                              event={event}
+                              isNotified={notifiedEvents.includes(event.id)}
+                            />
+                          ))}
                         </>
                       )}
                     </Td>
