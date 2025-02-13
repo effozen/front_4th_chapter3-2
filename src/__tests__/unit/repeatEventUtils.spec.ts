@@ -82,4 +82,35 @@ describe('repeatEventUtils >', () => {
       expect(generateWeeklyDates(baseEvent)).toEqual(['2025-01-15', '2025-01-29']);
     });
   });
+
+  describe('매월 반복되는 일정 테스트(monthly)', () => {
+    it('매월 반복하는 경우, 끝나는 날까지 한달 단위로 증가시킨 일정을 반환한다.', () => {
+      baseEvent.repeat = { type: 'monthly', interval: 1, endDate: '2025-06-01' };
+      expect(generateMonthlyDates(baseEvent)).toEqual([
+        '2025-02-01',
+        '2025-03-01',
+        '2025-04-01',
+        '2025-05-01',
+        '2025-06-01',
+      ]);
+    });
+
+    it('2개월 간격으로 반복하는 일정의 경우, 끝나는 날까지 2개월 단위로 증가시킨 일정을 반환한다.', () => {
+      baseEvent.repeat = { type: 'monthly', interval: 2, endDate: '2025-06-01' };
+      expect(generateMonthlyDates(baseEvent)).toEqual(['2025-03-01', '2025-05-01']);
+    });
+
+    it('31일에 시작한 일정이 존재하지 않는 월에서는 마지막 날로 조정해야 한다', () => {
+      baseEvent.date = '2025-01-31';
+      baseEvent.repeat = { type: 'monthly', interval: 1, endDate: '2025-06-30' };
+
+      expect(generateMonthlyDates(baseEvent)).toEqual([
+        '2025-02-28', // 2월은 28일
+        '2025-03-31',
+        '2025-04-30',
+        '2025-05-31',
+        '2025-06-30',
+      ]);
+    });
+  });
 });
