@@ -40,12 +40,12 @@ import {
 } from '@chakra-ui/react';
 import { useRef, useState } from 'react';
 
-import { CalendarEventItem } from './components/CalendarEventItem';
-import { useCalendarView } from './hooks/useCalendarView.ts';
-import { useEventForm } from './hooks/useEventForm.ts';
-import { useEventOperations } from './hooks/useEventOperations.ts';
-import { useNotifications } from './hooks/useNotifications.ts';
-import { useSearch } from './hooks/useSearch.ts';
+import { CalendarEventItem } from './components/CalendarEventItem'; // 반복 일정 단일 수정/삭제 버튼 포함
+import { useCalendarView } from './hooks/useCalendarView';
+import { useEventForm } from './hooks/useEventForm';
+import { useEventOperations } from './hooks/useEventOperations';
+import { useNotifications } from './hooks/useNotifications';
+import { useSearch } from './hooks/useSearch';
 import { Event, EventForm, RepeatType } from './types';
 import {
   formatDate,
@@ -71,6 +71,7 @@ const notificationOptions = [
 ];
 
 function App() {
+  // useEventForm 훅: 일정 입력 상태 관리
   const {
     title,
     setTitle,
@@ -104,19 +105,53 @@ function App() {
     editEvent,
   } = useEventForm();
 
-  const { events, saveEvent, deleteEvent } = useEventOperations(Boolean(editingEvent), () =>
-    setEditingEvent(null)
-  );
+  // 일정 CRUD 훅
+  const {
+    events,
+    saveEvent,
+    deleteEvent,
+    singleEditEvent,
+    singleDeleteEvent,
+    editRepeatingEvent,
+    deleteRepeatingEvent,
+  } = useEventOperations(Boolean(editingEvent), () => setEditingEvent(null));
 
+  // 알림 훅
   const { notifications, notifiedEvents, setNotifications } = useNotifications(events);
+
+  // 달력 뷰(주간/월간) 훅
   const { view, setView, currentDate, holidays, navigate } = useCalendarView();
+
+  // 검색 훅
   const { searchTerm, filteredEvents, setSearchTerm } = useSearch(events, currentDate, view);
 
+  // 일정 겹침 다이얼로그
   const [isOverlapDialogOpen, setIsOverlapDialogOpen] = useState(false);
   const [overlappingEvents, setOverlappingEvents] = useState<Event[]>([]);
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   const toast = useToast();
+
+  // ✅ 반복 일정 단일 수정
+  const handleSingleEdit = (updatedEvent: Event) => {
+    singleEditEvent(updatedEvent);
+  };
+
+  // ✅ 반복 일정 단일 삭제
+  const handleSingleDelete = (id: string) => {
+    singleDeleteEvent(id);
+  };
+
+  // 반복 일정 전체 수정
+  const handleEditRepeatingEvent = (updatedEvent: Event) => {
+    editRepeatingEvent(updatedEvent); // 여기에 반복 일정 전체 수정 로직 추가
+  };
+
+  // 반복 일정 전체 삭제
+  const handleDeleteRepeatingEvent = (id: string) => {
+    deleteRepeatingEvent(id);
+    // 여기에 반복 일정 전체 삭제 로직 추가
+  };
 
   const addOrUpdateEvent = async () => {
     if (!title || !date || !startTime || !endTime) {
@@ -156,18 +191,22 @@ function App() {
       notificationTime,
     };
 
+    // 일정 겹침 감지
     const overlapping = findOverlappingEvents(eventData, events);
     if (overlapping.length > 0) {
       setOverlappingEvents(overlapping);
       setIsOverlapDialogOpen(true);
     } else {
+      // 저장 후 폼 리셋
       await saveEvent(eventData);
       resetForm();
     }
   };
 
+  /** 주간 뷰 렌더 */
   const renderWeekView = () => {
     const weekDates = getWeekDates(currentDate);
+
     return (
       <VStack data-testid="week-view" align="stretch" w="full" spacing={4}>
         <Heading size="md">{formatWeek(currentDate)}</Heading>
@@ -188,11 +227,15 @@ function App() {
                   <Text fontWeight="bold">{date.getDate()}</Text>
                   {filteredEvents
                     .filter((event) => new Date(event.date).toDateString() === date.toDateString())
-                    .map((event) => (
+                    .map((event, index) => (
                       <CalendarEventItem
-                        key={event.id}
+                        key={`${event.id}-${index}`} // event.id와 index를 조합하여 고유한 key 생성
                         event={event}
                         isNotified={notifiedEvents.includes(event.id)}
+                        onSingleEdit={handleSingleEdit}
+                        onSingleDelete={handleSingleDelete}
+                        onEditRepeatingEvent={handleEditRepeatingEvent}
+                        onDeleteRepeatingEvent={handleDeleteRepeatingEvent}
                       />
                     ))}
                 </Td>
@@ -204,6 +247,7 @@ function App() {
     );
   };
 
+  /** 월간 뷰 렌더 */
   const renderMonthView = () => {
     const weeks = getWeeksAtMonth(currentDate);
 
@@ -243,11 +287,15 @@ function App() {
                               {holiday}
                             </Text>
                           )}
-                          {getEventsForDay(filteredEvents, day).map((event) => (
+                          {getEventsForDay(filteredEvents, day).map((event, index) => (
                             <CalendarEventItem
-                              key={event.id}
+                              key={`${event.id}-${index}`} // event.id와 index를 조합하여 고유한 key 생성
                               event={event}
                               isNotified={notifiedEvents.includes(event.id)}
+                              onSingleEdit={handleSingleEdit}
+                              onSingleDelete={handleSingleDelete}
+                              onEditRepeatingEvent={handleEditRepeatingEvent}
+                              onDeleteRepeatingEvent={handleDeleteRepeatingEvent}
                             />
                           ))}
                         </>
@@ -266,9 +314,11 @@ function App() {
   return (
     <Box w="full" h="100vh" m="auto" p={5}>
       <Flex gap={6} h="full">
+        {/* 좌측 일정 추가/수정 폼 */}
         <VStack w="400px" spacing={5} align="stretch">
           <Heading>{editingEvent ? '일정 수정' : '일정 추가'}</Heading>
 
+          {/* -- 일정 등록/수정 FormControl들 -- */}
           <FormControl>
             <FormLabel>제목</FormLabel>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -390,6 +440,7 @@ function App() {
           </Button>
         </VStack>
 
+        {/* 중간 영역: 주간/월간 뷰 */}
         <VStack flex={1} spacing={5} align="stretch">
           <Heading>일정 보기</Heading>
 
@@ -418,6 +469,7 @@ function App() {
           {view === 'month' && renderMonthView()}
         </VStack>
 
+        {/* 우측: 일정 검색/리스트 */}
         <VStack data-testid="event-list" w="500px" h="full" overflowY="auto">
           <FormControl>
             <FormLabel>일정 검색</FormLabel>
@@ -431,8 +483,14 @@ function App() {
           {filteredEvents.length === 0 ? (
             <Text>검색 결과가 없습니다.</Text>
           ) : (
-            filteredEvents.map((event) => (
-              <Box key={event.id} borderWidth={1} borderRadius="lg" p={3} width="100%">
+            filteredEvents.map((event, index) => (
+              <Box
+                key={`${event.id}-${index}`}
+                borderWidth={1}
+                borderRadius="lg"
+                p={3}
+                width="100%"
+              >
                 <HStack justifyContent="space-between">
                   <VStack align="start">
                     <HStack>
@@ -472,6 +530,7 @@ function App() {
                     </Text>
                   </VStack>
                   <HStack>
+                    {/* 기존 전체 수정/삭제 로직 (editEvent, deleteEvent) */}
                     <IconButton
                       aria-label="Edit event"
                       icon={<EditIcon />}
@@ -490,6 +549,7 @@ function App() {
         </VStack>
       </Flex>
 
+      {/* 일정 겹침 모달 */}
       <AlertDialog
         isOpen={isOverlapDialogOpen}
         leastDestructiveRef={cancelRef}
@@ -503,8 +563,8 @@ function App() {
 
             <AlertDialogBody>
               다음 일정과 겹칩니다:
-              {overlappingEvents.map((event) => (
-                <Text key={event.id}>
+              {overlappingEvents.map((event, index) => (
+                <Text key={`${event.id}-${index}`}>
                   {event.title} ({event.date} {event.startTime}-{event.endTime})
                 </Text>
               ))}
@@ -545,6 +605,7 @@ function App() {
         </AlertDialogOverlay>
       </AlertDialog>
 
+      {/* 알림 메시지 (toast) */}
       {notifications.length > 0 && (
         <VStack position="fixed" top={4} right={4} spacing={2} align="flex-end">
           {notifications.map((notification, index) => (
